@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun run *)",
+      "Bash(Start-Sleep -Seconds 5)",
+      "Bash(Get-Content \"C:\\\\Users\\\\PC\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-PC-source-ticket-system\\\\9546328d-0521-4cbf-b44b-a4a4cab5a221\\\\tasks\\\\bzo9361qh.output\")"
+    ]
+  }
+}
