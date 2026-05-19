@@ -58,7 +58,7 @@ export default function LoginPage() {
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
-                type="text"
+                type="email"
                 autoComplete="email"
                 aria-invalid={!!errors.email}
                 {...register("email")}
