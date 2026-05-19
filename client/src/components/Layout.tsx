@@ -12,16 +12,16 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="border-b border-gray-200 bg-white">
+      <nav className="border-b border-navy-900 bg-[#0f172a]">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-          <span className="text-sm font-semibold text-gray-900">
+          <span className="text-sm font-semibold text-white">
             Ticket System
           </span>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">{session?.user.name}</span>
+            <span className="text-sm text-slate-300">{session?.user.name}</span>
             <button
               onClick={handleSignOut}
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="rounded-lg border border-slate-600 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-700"
             >
               Sign out
             </button>
