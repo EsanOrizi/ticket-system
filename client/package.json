@@ -8,10 +8,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
     "better-auth": "^1.6.11",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-router-dom": "^7.6.0"
+    "react-hook-form": "^7.76.0",
+    "react-router-dom": "^7.6.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.4.1",
