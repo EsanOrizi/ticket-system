@@ -14,7 +14,10 @@
       "Bash(curl -s http://localhost:3000/api/health)",
       "Bash(curl -s -X POST http://localhost:3000/api/auth/sign-up/email -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"test@example.com\\\\\",\\\\\"password\\\\\":\\\\\"TestPassword123\\\\\",\\\\\"name\\\\\":\\\\\"Test User\\\\\"}\")",
       "Bash(python -m json.tool)",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "Bash(git *)",
+      "Bash(bunx shadcn@latest init --defaults)",
+      "Bash(bunx shadcn@latest add card input label alert --yes)"
     ]
   }
 }
