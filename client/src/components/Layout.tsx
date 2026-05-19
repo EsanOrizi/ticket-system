@@ -1,4 +1,4 @@
-import { Outlet, useNavigate } from "react-router-dom";
+import { Link, Outlet, useNavigate } from "react-router-dom";
 import { authClient } from "../lib/auth-client";
 
 export default function Layout() {
@@ -18,6 +18,11 @@ export default function Layout() {
             Ticket System
           </span>
           <div className="flex items-center gap-4">
+            {(session?.user as { role?: string })?.role === "ADMIN" && (
+              <Link to="/users" className="text-sm font-medium text-gray-700 hover:text-gray-900">
+                Users
+              </Link>
+            )}
             <span className="text-sm text-gray-500">{session?.user.name}</span>
             <button
               onClick={handleSignOut}
