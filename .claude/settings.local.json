@@ -3,7 +3,18 @@
     "allow": [
       "Bash(bun run *)",
       "Bash(Start-Sleep -Seconds 5)",
-      "Bash(Get-Content \"C:\\\\Users\\\\PC\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-PC-source-ticket-system\\\\9546328d-0521-4cbf-b44b-a4a4cab5a221\\\\tasks\\\\bzo9361qh.output\")"
+      "Bash(Get-Content \"C:\\\\Users\\\\PC\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-PC-source-ticket-system\\\\9546328d-0521-4cbf-b44b-a4a4cab5a221\\\\tasks\\\\bzo9361qh.output\")",
+      "Bash(Get-ChildItem *)",
+      "mcp__context7__resolve-library-id",
+      "Bash(bun add *)",
+      "Bash(node *)",
+      "PowerShell(cd C:\\\\Users\\\\PC\\\\source\\\\ticket-system\\\\server; $env:PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION = \"yes\"; bunx prisma migrate reset --force 2>&1)",
+      "PowerShell(Start-Sleep -Seconds 4; Invoke-RestMethod -Uri \"http://localhost:3000/api/auth/sign-up/email\" -Method POST -ContentType \"application/json\" -Body '{\"name\":\"Test User\",\"email\":\"test@example.com\",\"password\":\"password123\"}' | ConvertTo-Json -Depth 5)",
+      "PowerShell(Invoke-RestMethod -Uri \"http://localhost:3000/api/auth/sign-in/email\" -Method POST -ContentType \"application/json\" -Body '{\"email\":\"test@example.com\",\"password\":\"password123\"}' | ConvertTo-Json -Depth 5)",
+      "Bash(curl -s http://localhost:3000/api/health)",
+      "Bash(curl -s -X POST http://localhost:3000/api/auth/sign-up/email -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"test@example.com\\\\\",\\\\\"password\\\\\":\\\\\"TestPassword123\\\\\",\\\\\"name\\\\\":\\\\\"Test User\\\\\"}\")",
+      "Bash(python -m json.tool)",
+      "Bash(curl *)"
     ]
   }
 }
