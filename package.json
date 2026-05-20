@@ -7,6 +7,12 @@
     "dev:client": "bun run --cwd client dev",
     "dev:server": "bun run --cwd server dev",
     "build": "bun run --filter '*' build",
-    "typecheck": "bun run --filter '*' typecheck"
+    "typecheck": "bun run --filter '*' typecheck",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^22.0.0"
   }
 }

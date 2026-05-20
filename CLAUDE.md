@@ -16,6 +16,7 @@ bun run dev:client   # client only (http://localhost:5173)
 bun run dev:server   # server only (http://localhost:3000)
 bun run typecheck    # type-check all workspaces
 bun run build        # build all workspaces
+bun run test:e2e     # run Playwright E2E tests
 ```
 
 ## Key Details
@@ -24,6 +25,15 @@ bun run build        # build all workspaces
 - CORS is pre-configured on the server to allow the client origin
 - API routes are prefixed with `/api` (e.g. `GET /api/health`)
 - Server uses `bun run --hot` for hot-reloading
+
+## E2E Testing
+
+Use the **playwright-e2e-writer** agent for all E2E test work — writing new tests, updating tests after UI changes, and adding `data-testid` attributes. Do not write Playwright tests without invoking this agent.
+
+```bash
+bun run test:e2e      # run all E2E tests (headless)
+bun run test:e2e:ui   # Playwright UI mode
+```
 
 ## Documentation
 

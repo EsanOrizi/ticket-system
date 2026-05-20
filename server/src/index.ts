@@ -19,13 +19,19 @@ const PORT = process.env.PORT ?? 3000;
 app.use(helmet());
 app.use(cors({ origin: process.env.CLIENT_ORIGIN, credentials: true }));
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.all("/api/auth/*", authLimiter, toNodeHandler(auth));
+const isProduction = process.env.NODE_ENV === "production";
+
+if (isProduction) {
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  app.all("/api/auth/*", authLimiter, toNodeHandler(auth));
+} else {
+  app.all("/api/auth/*", toNodeHandler(auth));
+}
 
 app.use(express.json({ limit: "50kb" }));
 

@@ -4,3 +4,6 @@ dist
 .env.local
 bun.lockb
 server/.env
+server/.env.test
+playwright-report/
+test-results/
