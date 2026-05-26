@@ -19,6 +19,12 @@ bun run build        # build all workspaces
 bun run test:e2e     # run Playwright E2E tests
 ```
 
+## Data Fetching (client)
+
+- Use **axios** for all HTTP requests — `axios.get/post/patch/delete` with `{ withCredentials: true }` on every call so cookies are sent.
+- Use **TanStack Query** (`@tanstack/react-query`) for all server-state management — no raw `useEffect`/`useState` for fetching. Define the fetcher as a plain `async` function outside the component, then call it via `useQuery` or `useMutation`.
+- `QueryClientProvider` is already mounted in `main.tsx`; do not add another one.
+
 ## Key Details
 
 - Server runs on port **3000**, client on port **5173**

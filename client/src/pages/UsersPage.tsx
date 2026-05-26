@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
+import axios from "axios";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,14 @@ interface User {
   email: string;
   role: string;
   createdAt: string;
+}
+
+async function fetchUsers(): Promise<User[]> {
+  const { data } = await axios.get<{ users: User[] }>(
+    "http://localhost:3000/api/users",
+    { withCredentials: true }
+  );
+  return data.users;
 }
 
 function RoleBadge({ role }: { role: string }) {
@@ -49,33 +58,14 @@ function formatDate(iso: string) {
 }
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: users = [], isLoading, error, refetch } = useQuery({
+    queryKey: ["users"],
+    queryFn: fetchUsers,
+  });
 
-  const fetchUsers = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("http://localhost:3000/api/users", {
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? `Request failed (${res.status})`);
-      }
-      const data = await res.json();
-      setUsers(data.users);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load users.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+  const errorMessage = axios.isAxiosError(error)
+    ? (error.response?.data as { error?: string })?.error ?? error.message
+    : error?.message ?? null;
 
   if (isLoading) {
     return (
@@ -85,13 +75,13 @@ export default function UsersPage() {
     );
   }
 
-  if (error) {
+  if (errorMessage) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-8">
         <Alert variant="destructive">
           <AlertDescription className="flex items-center justify-between gap-4">
-            <span>{error}</span>
-            <Button size="sm" variant="outline" onClick={fetchUsers}>
+            <span>{errorMessage}</span>
+            <Button size="sm" variant="outline" onClick={() => refetch()}>
               Retry
             </Button>
           </AlertDescription>
