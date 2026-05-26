@@ -168,6 +168,61 @@ describe("UsersPage", () => {
     });
   });
 
+  describe("modal", () => {
+    beforeEach(() => {
+      mockedGet.mockResolvedValue({ data: { users: USERS } });
+    });
+
+    it("shows the dialog when 'Create New User' is clicked", async () => {
+      renderUsersPage();
+
+      const openButton = await screen.findByRole("button", { name: /create new user/i });
+      await userEvent.click(openButton);
+
+      await waitFor(() => {
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
+      });
+    });
+
+    it("hides the dialog when clicking the backdrop", async () => {
+      renderUsersPage();
+
+      const openButton = await screen.findByRole("button", { name: /create new user/i });
+      await userEvent.click(openButton);
+
+      await waitFor(() => {
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
+      });
+
+      // The backdrop is the fixed full-screen overlay rendered behind the popup.
+      // Clicking it is an outside-click, which base-ui uses to close the dialog.
+      const backdrop = document.querySelector<HTMLElement>(".fixed.inset-0");
+      expect(backdrop).not.toBeNull();
+      await userEvent.click(backdrop!);
+
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
+    });
+
+    it("hides the dialog when pressing Escape", async () => {
+      renderUsersPage();
+
+      const openButton = await screen.findByRole("button", { name: /create new user/i });
+      await userEvent.click(openButton);
+
+      await waitFor(() => {
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
+      });
+
+      await userEvent.keyboard("{Escape}");
+
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
+    });
+  });
+
   describe("error state", () => {
     it("shows the server error message when the request fails", async () => {
       const serverError = Object.assign(new Error("Request failed"), {
