@@ -328,7 +328,10 @@ test.describe("ADMIN — authorised access", () => {
   test("admin can navigate directly to /users", async ({ page }) => {
     await page.goto("/users");
     await expect(page).toHaveURL("/users");
-    await expect(page.getByRole("heading", { name: "Users" })).toBeVisible();
+    // CardTitle renders as <div data-slot="card-title">, not a heading element.
+    await expect(
+      page.locator('[data-slot="card-title"]', { hasText: "Users" })
+    ).toBeVisible();
   });
 
   test("admin sees the Users nav link in the layout", async ({ page }) => {
@@ -344,7 +347,10 @@ test.describe("ADMIN — authorised access", () => {
     await page.getByRole("link", { name: "Users" }).click();
     await page.waitForURL("/users");
     await expect(page).toHaveURL("/users");
-    await expect(page.getByRole("heading", { name: "Users" })).toBeVisible();
+    // CardTitle renders as <div data-slot="card-title">, not a heading element.
+    await expect(
+      page.locator('[data-slot="card-title"]', { hasText: "Users" })
+    ).toBeVisible();
   });
 
   test("admin sees their name in the nav bar", async ({ page }) => {

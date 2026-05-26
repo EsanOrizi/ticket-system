@@ -30,6 +30,7 @@ function RoleBadge({ role }: { role: string }) {
   const isAdmin = role === "ADMIN";
   return (
     <span
+      data-testid="user-role-badge"
       className={
         isAdmin
           ? "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset bg-indigo-50 text-indigo-700 ring-indigo-700/10"
@@ -176,7 +177,10 @@ export default function UsersPage() {
                       <td className="px-6 py-3">
                         <div className="flex items-center gap-3">
                           <UserAvatar name={user.name} />
-                          <span className="font-medium text-gray-900">
+                          <span
+                            className="font-medium text-gray-900"
+                            data-testid="user-name-cell"
+                          >
                             {user.name}
                           </span>
                         </div>

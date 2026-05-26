@@ -39,7 +39,8 @@
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(k,v\\) for k,v in d.get\\('exports',{}\\).items\\(\\) if 'crypto' in k.lower\\(\\) or 'password' in k.lower\\(\\)]\")",
       "Bash(bun -e ' *)",
       "PowerShell(Get-NetTCPConnection *)",
-      "PowerShell(git *)"
+      "PowerShell(git *)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:Esan1@localhost:5432/helpdesk_test\" BETTER_AUTH_SECRET=\"5b52cbf9e51df6d49d5dcde0eb47d6762c03f3ffe9f33099a798ff3f83bae321\" CLIENT_ORIGIN=\"http://localhost:5173\" bunx prisma migrate dev --name add_deleted_at_to_user)"
     ]
   }
 }
