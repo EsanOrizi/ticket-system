@@ -9,9 +9,10 @@ import { hashPassword } from "better-auth/crypto";
 
 export const usersRouter = Router();
 
-// GET /api/users — list all users
+// GET /api/users — list all non-deleted users
 usersRouter.get("/", requireAuth, requireAdmin, asyncHandler(async (_req, res) => {
   const users = await prisma.user.findMany({
+    where: { deletedAt: null },
     select: { id: true, name: true, email: true, role: true, createdAt: true },
     orderBy: { createdAt: "asc" },
   });
@@ -92,4 +93,29 @@ usersRouter.patch("/:id", requireAuth, requireAdmin, asyncHandler(async (req, re
   }
 
   res.json({ user });
+}));
+
+// DELETE /api/users/:id — soft-delete a user (admins cannot be deleted)
+usersRouter.delete("/:id", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+  const id = req.params.id as string;
+
+  const existing = await prisma.user.findUnique({ where: { id } });
+  if (!existing || existing.deletedAt !== null) {
+    res.status(404).json({ error: "User not found." });
+    return;
+  }
+
+  if (existing.role === Role.ADMIN) {
+    res.status(403).json({ error: "Admin accounts cannot be deleted." });
+    return;
+  }
+
+  await prisma.$transaction([
+    // Invalidate all active sessions so the user is logged out immediately
+    prisma.session.deleteMany({ where: { userId: id } }),
+    // Soft-delete the user
+    prisma.user.update({ where: { id }, data: { deletedAt: new Date() } }),
+  ]);
+
+  res.status(204).send();
 }));

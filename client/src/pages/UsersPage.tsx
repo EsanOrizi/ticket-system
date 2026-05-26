@@ -1,13 +1,14 @@
 import { useState } from "react";
 import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import CreateUserModal from "@/components/CreateUserModal";
 import EditUserModal from "@/components/EditUserModal";
+import DeleteUserModal from "@/components/DeleteUserModal";
 
 interface User {
   id: string;
@@ -65,6 +66,7 @@ function formatDate(iso: string) {
 export default function UsersPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [deletingUser, setDeletingUser] = useState<User | null>(null);
 
   const { data: users = [], isLoading, error, refetch } = useQuery({
     queryKey: ["users"],
@@ -187,14 +189,27 @@ export default function UsersPage() {
                         {formatDate(user.createdAt)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <Button
-                          size="icon-sm"
-                          variant="ghost"
-                          onClick={() => setEditingUser(user)}
-                          aria-label={`Edit ${user.name}`}
-                        >
-                          <Pencil />
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            onClick={() => setEditingUser(user)}
+                            aria-label={`Edit ${user.name}`}
+                          >
+                            <Pencil />
+                          </Button>
+                          {user.role !== "ADMIN" && (
+                            <Button
+                              size="icon-sm"
+                              variant="ghost"
+                              onClick={() => setDeletingUser(user)}
+                              aria-label={`Delete ${user.name}`}
+                              className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                            >
+                              <Trash2 />
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -209,6 +224,10 @@ export default function UsersPage() {
       <EditUserModal
         user={editingUser}
         onOpenChange={(open) => { if (!open) setEditingUser(null); }}
+      />
+      <DeleteUserModal
+        user={deletingUser}
+        onOpenChange={(open) => { if (!open) setDeletingUser(null); }}
       />
     </div>
   );
