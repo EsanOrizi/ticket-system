@@ -1,7 +1,159 @@
-export default function UsersPage() {
+import { useEffect, useState, useCallback } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  createdAt: string;
+}
+
+function RoleBadge({ role }: { role: string }) {
+  const isAdmin = role === "ADMIN";
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-semibold">Users</h1>
+    <span
+      className={
+        isAdmin
+          ? "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset bg-indigo-50 text-indigo-700 ring-indigo-700/10"
+          : "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset bg-gray-50 text-gray-600 ring-gray-500/10"
+      }
+    >
+      {role}
+    </span>
+  );
+}
+
+function UserAvatar({ name }: { name: string }) {
+  const initials = name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  return (
+    <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600">
+      {initials}
+    </span>
+  );
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+export default function UsersPage() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchUsers = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("http://localhost:3000/api/users", {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? `Request failed (${res.status})`);
+      }
+      const data = await res.json();
+      setUsers(data.users);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load users.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <p className="text-sm text-gray-400">Loading users…</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-8">
+        <Alert variant="destructive">
+          <AlertDescription className="flex items-center justify-between gap-4">
+            <span>{error}</span>
+            <Button size="sm" variant="outline" onClick={fetchUsers}>
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-8">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <CardTitle className="text-xl font-semibold">Users</CardTitle>
+          <span className="text-sm text-gray-500">
+            {users.length} {users.length === 1 ? "member" : "members"}
+          </span>
+        </CardHeader>
+        <CardContent className="p-0">
+          {users.length === 0 ? (
+            <p className="px-6 py-8 text-center text-sm text-gray-400">
+              No users found.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-t bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                    <th className="px-6 py-3">Name</th>
+                    <th className="px-6 py-3">Email</th>
+                    <th className="px-6 py-3">Role</th>
+                    <th className="px-6 py-3">Joined</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {users.map((user) => (
+                    <tr
+                      key={user.id}
+                      className="transition-colors hover:bg-gray-50"
+                    >
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-3">
+                          <UserAvatar name={user.name} />
+                          <span className="font-medium text-gray-900">
+                            {user.name}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3 text-gray-600">{user.email}</td>
+                      <td className="px-6 py-3">
+                        <RoleBadge role={user.role} />
+                      </td>
+                      <td className="px-6 py-3 text-gray-500">
+                        {formatDate(user.createdAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
