@@ -31,7 +31,15 @@
       "Bash(bun install *)",
       "Bash(echo \"PID=$!\")",
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('version','?'\\)\\)\")",
-      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('version:', d.get\\('version','?'\\)\\); exports = d.get\\('exports', {}\\); [print\\(k\\) for k in list\\(exports.keys\\(\\)\\)[:20]]\")"
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('version:', d.get\\('version','?'\\)\\); exports = d.get\\('exports', {}\\); [print\\(k\\) for k in list\\(exports.keys\\(\\)\\)[:20]]\")",
+      "Bash(echo \"PID: $!\")",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(xargs grep -l \"signUpEmail\\\\|sign-up-email\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('exports', {}\\), indent=2\\)\\)\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(k,v\\) for k,v in d.get\\('exports',{}\\).items\\(\\) if 'crypto' in k.lower\\(\\) or 'password' in k.lower\\(\\)]\")",
+      "Bash(bun -e ' *)",
+      "PowerShell(Get-NetTCPConnection *)",
+      "PowerShell(git *)"
     ]
   }
 }
