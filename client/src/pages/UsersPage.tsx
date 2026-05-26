@@ -1,11 +1,13 @@
 import { useState } from "react";
 import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
+import { Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import CreateUserModal from "@/components/CreateUserModal";
+import EditUserModal from "@/components/EditUserModal";
 
 interface User {
   id: string;
@@ -62,6 +64,7 @@ function formatDate(iso: string) {
 
 export default function UsersPage() {
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   const { data: users = [], isLoading, error, refetch } = useQuery({
     queryKey: ["users"],
@@ -89,6 +92,7 @@ export default function UsersPage() {
                     <th className="px-6 py-3">Email</th>
                     <th className="px-6 py-3">Role</th>
                     <th className="px-6 py-3">Joined</th>
+                    <th className="px-6 py-3"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -103,6 +107,7 @@ export default function UsersPage() {
                       <td className="px-6 py-3"><Skeleton className="h-4 w-44" /></td>
                       <td className="px-6 py-3"><Skeleton className="h-5 w-14 rounded-md" /></td>
                       <td className="px-6 py-3"><Skeleton className="h-4 w-24" /></td>
+                      <td className="px-6 py-3"></td>
                     </tr>
                   ))}
                 </tbody>
@@ -157,6 +162,7 @@ export default function UsersPage() {
                     <th className="px-6 py-3">Email</th>
                     <th className="px-6 py-3">Role</th>
                     <th className="px-6 py-3">Joined</th>
+                    <th className="px-6 py-3"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -180,6 +186,16 @@ export default function UsersPage() {
                       <td className="px-6 py-3 text-gray-500">
                         {formatDate(user.createdAt)}
                       </td>
+                      <td className="px-4 py-3 text-right">
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          onClick={() => setEditingUser(user)}
+                          aria-label={`Edit ${user.name}`}
+                        >
+                          <Pencil />
+                        </Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -190,6 +206,10 @@ export default function UsersPage() {
       </Card>
 
       <CreateUserModal open={modalOpen} onOpenChange={setModalOpen} />
+      <EditUserModal
+        user={editingUser}
+        onOpenChange={(open) => { if (!open) setEditingUser(null); }}
+      />
     </div>
   );
 }

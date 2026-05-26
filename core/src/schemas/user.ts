@@ -7,3 +7,15 @@ export const createUserSchema = z.object({
 });
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
+
+export const updateUserSchema = z.object({
+  name: z.string().min(3, "Name must be at least 3 characters"),
+  email: z.string().email("Enter a valid email address"),
+  role: z.enum(["ADMIN", "AGENT"]),
+  password: z.string().optional().refine(
+    (val) => val === undefined || val === "" || val.length >= 8,
+    { message: "Password must be at least 8 characters" }
+  ),
+});
+
+export type UpdateUserInput = z.infer<typeof updateUserSchema>;
