@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface User {
   id: string;
@@ -69,8 +70,42 @@ export default function UsersPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <p className="text-sm text-gray-400">Loading users…</p>
+      <div className="mx-auto max-w-7xl px-4 py-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <Skeleton className="h-6 w-16" />
+            <Skeleton className="h-4 w-20" />
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-t bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                    <th className="px-6 py-3">Name</th>
+                    <th className="px-6 py-3">Email</th>
+                    <th className="px-6 py-3">Role</th>
+                    <th className="px-6 py-3">Joined</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i}>
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="size-8 rounded-full" />
+                          <Skeleton className="h-4 w-28" />
+                        </div>
+                      </td>
+                      <td className="px-6 py-3"><Skeleton className="h-4 w-44" /></td>
+                      <td className="px-6 py-3"><Skeleton className="h-5 w-14 rounded-md" /></td>
+                      <td className="px-6 py-3"><Skeleton className="h-4 w-24" /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

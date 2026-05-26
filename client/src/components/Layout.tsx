@@ -14,9 +14,9 @@ export default function Layout() {
     <div className="min-h-screen bg-gray-50">
       <nav className="border-b bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-          <span className="text-sm font-semibold text-gray-900">
+          <Link to="/" className="text-sm font-semibold text-gray-900 hover:text-gray-600">
             Ticket System
-          </span>
+          </Link>
           <div className="flex items-center gap-4">
             {(session?.user as { role?: string })?.role === "ADMIN" && (
               <Link to="/users" className="text-sm font-medium text-gray-700 hover:text-gray-900">
