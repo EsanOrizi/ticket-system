@@ -15,6 +15,7 @@
     "db:test:migrate": "prisma migrate deploy"
   },
   "dependencies": {
+    "@ticket-system/core": "workspace:*",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "better-auth": "^1.6.11",
@@ -23,7 +24,8 @@
     "express": "^4.21.2",
     "express-rate-limit": "^8.5.2",
     "helmet": "^8.1.0",
-    "pg": "^8.20.0"
+    "pg": "^8.20.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/bun": "latest",

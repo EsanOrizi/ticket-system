@@ -1,9 +1,11 @@
+import { useState } from "react";
 import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import CreateUserModal from "@/components/CreateUserModal";
 
 interface User {
   id: string;
@@ -59,6 +61,8 @@ function formatDate(iso: string) {
 }
 
 export default function UsersPage() {
+  const [modalOpen, setModalOpen] = useState(false);
+
   const { data: users = [], isLoading, error, refetch } = useQuery({
     queryKey: ["users"],
     queryFn: fetchUsers,
@@ -130,9 +134,14 @@ export default function UsersPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="text-xl font-semibold">Users</CardTitle>
-          <span className="text-sm text-gray-500">
-            {users.length} {users.length === 1 ? "member" : "members"}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-500">
+              {users.length} {users.length === 1 ? "member" : "members"}
+            </span>
+            <Button size="sm" onClick={() => setModalOpen(true)}>
+              Create New User
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {users.length === 0 ? (
@@ -179,6 +188,8 @@ export default function UsersPage() {
           )}
         </CardContent>
       </Card>
+
+      <CreateUserModal open={modalOpen} onOpenChange={setModalOpen} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "./auth";
+import { Role } from "./roles";
 
 declare global {
   namespace Express {
@@ -29,7 +30,7 @@ export async function requireAuth(
 }
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  if ((req.user as { role?: string })?.role !== "ADMIN") {
+  if ((req.user as { role?: string })?.role !== Role.ADMIN) {
     res.status(403).json({ error: "Forbidden" });
     return;
   }

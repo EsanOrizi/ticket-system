@@ -3,11 +3,18 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./prisma";
 import { Role } from "./roles";
 
-export const auth = betterAuth({
+/**
+ * A separate betterAuth instance used exclusively for admin-initiated user
+ * creation. The main `auth` instance has `disableSignUp: true` to prevent
+ * self-registration; this instance omits that flag so `api.signUpEmail()` can
+ * be called server-side by admin routes to hash passwords correctly.
+ *
+ * This mirrors the pattern used by the seed scripts.
+ */
+export const createUserAuth = betterAuth({
   database: prismaAdapter(prisma, { provider: "postgresql" }),
-  basePath: "/api/auth", trustedOrigins: [process.env.CLIENT_ORIGIN!],
   secret: process.env.BETTER_AUTH_SECRET!,
-  emailAndPassword: { enabled: true, disableSignUp: true },
+  emailAndPassword: { enabled: true },
   user: {
     additionalFields: {
       role: {
@@ -19,5 +26,3 @@ export const auth = betterAuth({
     },
   },
 });
-
-export type Auth = typeof auth;

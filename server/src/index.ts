@@ -1,19 +1,10 @@
-import express, { type RequestHandler, type NextFunction, type Request, type Response } from "express";
+import express, { type NextFunction, type Request, type Response } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth";
-import { requireAuth, requireAdmin } from "./lib/auth-middleware";
-import { prisma } from "./lib/prisma";
-
-// Wraps an async route handler and forwards any thrown error to Express's
-// error pipeline, so individual handlers need no try/catch.
-function asyncHandler(fn: RequestHandler): RequestHandler {
-  return (req, res, next) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
-  };
-}
+import { usersRouter } from "./routes/users";
 
 const required = ["BETTER_AUTH_SECRET", "DATABASE_URL", "CLIENT_ORIGIN"];
 for (const key of required) {
@@ -49,14 +40,7 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-// Users — admin only
-app.get("/api/users", requireAuth, requireAdmin, asyncHandler(async (_req, res) => {
-  const users = await prisma.user.findMany({
-    select: { id: true, name: true, email: true, role: true, createdAt: true },
-    orderBy: { createdAt: "asc" },
-  });
-  res.json({ users });
-}));
+app.use("/api/users", usersRouter);
 
 // Global error handler — catches anything forwarded via next(err) or thrown
 // inside an asyncHandler-wrapped route.

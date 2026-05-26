@@ -16,6 +16,7 @@
         "@fontsource-variable/geist": "^5.2.9",
         "@hookform/resolvers": "^5.2.2",
         "@tanstack/react-query": "^5.100.14",
+        "@ticket-system/core": "workspace:*",
         "axios": "^1.16.1",
         "better-auth": "^1.6.11",
         "class-variance-authority": "^0.7.1",
@@ -47,11 +48,21 @@
         "vitest": "^4.1.7",
       },
     },
+    "core": {
+      "name": "@ticket-system/core",
+      "dependencies": {
+        "zod": "^4.4.3",
+      },
+      "devDependencies": {
+        "typescript": "^5.8.3",
+      },
+    },
     "server": {
       "name": "server",
       "dependencies": {
         "@prisma/adapter-pg": "^7.8.0",
         "@prisma/client": "^7.8.0",
+        "@ticket-system/core": "workspace:*",
         "better-auth": "^1.6.11",
         "cors": "^2.8.5",
         "dotenv": "^17.4.2",
@@ -59,6 +70,7 @@
         "express-rate-limit": "^8.5.2",
         "helmet": "^8.1.0",
         "pg": "^8.20.0",
+        "zod": "^4.4.3",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -453,6 +465,8 @@
     "@testing-library/react": ["@testing-library/react@16.3.2", "", { "dependencies": { "@babel/runtime": "^7.12.5" }, "peerDependencies": { "@testing-library/dom": "^10.0.0", "@types/react": "^18.0.0 || ^19.0.0", "@types/react-dom": "^18.0.0 || ^19.0.0", "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" }, "optionalPeers": ["@types/react", "@types/react-dom"] }, "sha512-XU5/SytQM+ykqMnAnvB2umaJNIOsLF3PVv//1Ew4CTcpz0/BRyy/af40qqrt7SjKpDdT1saBMc42CUok5gaw+g=="],
 
     "@testing-library/user-event": ["@testing-library/user-event@14.6.1", "", { "peerDependencies": { "@testing-library/dom": ">=7.21.4" } }, "sha512-vq7fv0rnt+QTXgPxr5Hjc210p6YKq2kmdziLgnsZGgLJ9e6VAShx1pACLuRjd/AS/sr7phAR58OIIpf0LlmQNw=="],
+
+    "@ticket-system/core": ["@ticket-system/core@workspace:core"],
 
     "@ts-morph/common": ["@ts-morph/common@0.27.0", "", { "dependencies": { "fast-glob": "^3.3.3", "minimatch": "^10.0.1", "path-browserify": "^1.0.1" } }, "sha512-Wf29UqxWDpc+i61k3oIOzcUfQt79PIT9y/MWfAGlrkjg6lBC1hwDECLXPVJAhWjiGbfBCxZd65F/LIZF3+jeJQ=="],
 

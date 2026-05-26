@@ -17,7 +17,21 @@
       "Bash(curl *)",
       "Bash(git *)",
       "Bash(bunx shadcn@latest init --defaults)",
-      "Bash(bunx shadcn@latest add card input label alert --yes)"
+      "Bash(bunx shadcn@latest add card input label alert --yes)",
+      "Bash(Select-Object -ExpandProperty Name)",
+      "PowerShell(New-Item *)",
+      "Bash(xargs ls -la)",
+      "Bash(bunx playwright *)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:Esan1@localhost:5432/helpdesk_test\" bun run scripts/create-test-db.ts)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:Esan1@localhost:5432/helpdesk_test\" bunx prisma migrate deploy)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:Esan1@localhost:5432/helpdesk_test\" bun run prisma/seed.ts)",
+      "Bash(Select-Object FullName)",
+      "Bash(bunx prisma *)",
+      "mcp__ide__getDiagnostics",
+      "Bash(bun install *)",
+      "Bash(echo \"PID=$!\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('version','?'\\)\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('version:', d.get\\('version','?'\\)\\); exports = d.get\\('exports', {}\\); [print\\(k\\) for k in list\\(exports.keys\\(\\)\\)[:20]]\")"
     ]
   }
 }
