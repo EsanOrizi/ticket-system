@@ -42,3 +42,9 @@ export const updateTicketSchema = z.object({
 });
 
 export type UpdateTicketInput = z.infer<typeof updateTicketSchema>;
+
+export const createReplySchema = z.object({
+  body: z.string().min(1, "Reply cannot be empty").max(10000, "Reply is too long"),
+});
+
+export type CreateReplyInput = z.infer<typeof createReplySchema>;

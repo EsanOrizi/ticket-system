@@ -1,14 +1,18 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Send } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import {
   TICKET_STATUSES,
   TICKET_CATEGORIES,
+  createReplySchema,
   type TicketStatus,
   type TicketCategory,
+  type CreateReplyInput,
 } from "@ticket-system/core";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -46,6 +50,22 @@ interface Agent {
   role: string;
 }
 
+interface ReplyAuthor {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
+interface Reply {
+  id: string;
+  ticketId: string;
+  authorId: string;
+  author: ReplyAuthor;
+  body: string;
+  createdAt: string;
+}
+
 // ---------------------------------------------------------------------------
 // Fetchers / mutators
 // ---------------------------------------------------------------------------
@@ -64,6 +84,14 @@ async function fetchAgents(): Promise<Agent[]> {
     { withCredentials: true }
   );
   return data.users.filter((u) => u.role === "AGENT");
+}
+
+async function fetchReplies(ticketId: string): Promise<Reply[]> {
+  const { data } = await axios.get<{ replies: Reply[] }>(
+    `http://localhost:3000/api/tickets/${ticketId}/replies`,
+    { withCredentials: true }
+  );
+  return data.replies;
 }
 
 async function patchTicket(
@@ -87,6 +115,15 @@ async function assignTicket(id: string, assignedToId: string | null): Promise<Ti
   return data.ticket;
 }
 
+async function postReply(ticketId: string, body: string): Promise<Reply> {
+  const { data } = await axios.post<{ reply: Reply }>(
+    `http://localhost:3000/api/tickets/${ticketId}/replies`,
+    { body },
+    { withCredentials: true }
+  );
+  return data.reply;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -99,6 +136,21 @@ function formatDate(iso: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatRelativeDate(iso: string) {
+  const date = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) return "just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 function toLabel(value: string) {
@@ -306,6 +358,157 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 // ---------------------------------------------------------------------------
+// Reply thread
+// ---------------------------------------------------------------------------
+
+function ReplyBubble({ reply }: { reply: Reply }) {
+  const initials = reply.author.name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  const isAdmin = reply.author.role === "ADMIN";
+
+  return (
+    <div
+      data-testid="reply-item"
+      className="flex gap-3"
+    >
+      {/* Avatar */}
+      <div
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white ${
+          isAdmin ? "bg-violet-500" : "bg-blue-500"
+        }`}
+      >
+        {initials}
+      </div>
+
+      {/* Bubble */}
+      <div className="flex-1">
+        <div className="flex flex-wrap items-baseline gap-2">
+          <span className="text-sm font-semibold text-gray-900">{reply.author.name}</span>
+          <span
+            className={`text-xs font-medium ${isAdmin ? "text-violet-600" : "text-blue-600"}`}
+          >
+            {isAdmin ? "Admin" : "Agent"}
+          </span>
+          <span className="text-xs text-gray-400" title={formatDate(reply.createdAt)}>
+            {formatRelativeDate(reply.createdAt)}
+          </span>
+        </div>
+        <p className="mt-1 whitespace-pre-wrap rounded-lg bg-gray-50 px-3 py-2 text-sm leading-relaxed text-gray-800 ring-1 ring-inset ring-gray-200">
+          {reply.body}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ReplyThread({ ticketId }: { ticketId: string }) {
+  const queryClient = useQueryClient();
+
+  const { data: replies = [], isLoading } = useQuery({
+    queryKey: ["replies", ticketId],
+    queryFn: () => fetchReplies(ticketId),
+  });
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<CreateReplyInput>({
+    resolver: zodResolver(createReplySchema),
+  });
+
+  const mutation = useMutation({
+    mutationFn: (values: CreateReplyInput) => postReply(ticketId, values.body),
+    onSuccess: () => {
+      reset();
+      void queryClient.invalidateQueries({ queryKey: ["replies", ticketId] });
+    },
+  });
+
+  const serverError = axios.isAxiosError(mutation.error)
+    ? (mutation.error.response?.data as { error?: string })?.error ??
+      mutation.error.message
+    : (mutation.error as Error | null)?.message ?? null;
+
+  return (
+    <div className="mt-6 border-t pt-6">
+      <h3 className="mb-4 text-sm font-medium text-gray-500">
+        Replies{replies.length > 0 ? ` (${replies.length})` : ""}
+      </h3>
+
+      {/* Thread */}
+      {isLoading ? (
+        <div className="space-y-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="flex gap-3">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : replies.length === 0 ? (
+        <p className="mb-4 text-sm text-gray-400">No replies yet. Be the first to reply.</p>
+      ) : (
+        <div className="mb-6 space-y-4">
+          {replies.map((reply) => (
+            <ReplyBubble key={reply.id} reply={reply} />
+          ))}
+        </div>
+      )}
+
+      {/* Reply form */}
+      <form
+        data-testid="reply-form"
+        onSubmit={handleSubmit((values) => mutation.mutate(values))}
+        className="mt-4 space-y-2"
+      >
+        {serverError && (
+          <Alert variant="destructive">
+            <AlertDescription>{serverError}</AlertDescription>
+          </Alert>
+        )}
+
+        <textarea
+          data-testid="reply-body-input"
+          {...register("body")}
+          rows={4}
+          placeholder="Write a reply…"
+          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+          disabled={mutation.isPending}
+          onChange={() => {
+            if (mutation.isError) mutation.reset();
+          }}
+        />
+        {errors.body && (
+          <p className="text-sm text-destructive">{errors.body.message}</p>
+        )}
+
+        <div className="flex justify-end">
+          <Button
+            data-testid="reply-submit-button"
+            type="submit"
+            disabled={mutation.isPending}
+            className="gap-2"
+          >
+            <Send className="h-4 w-4" />
+            {mutation.isPending ? "Sending…" : "Send Reply"}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
@@ -496,6 +699,9 @@ export default function TicketDetailPage() {
               </p>
             </div>
           )}
+
+          {/* Reply thread + form */}
+          <ReplyThread ticketId={ticket.id} />
         </CardContent>
       </Card>
     </div>

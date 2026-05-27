@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireAuth, requireAdmin } from "../lib/auth-middleware";
 import { prisma } from "../lib/prisma";
 import { asyncHandler } from "../lib/async-handler";
-import { assignTicketSchema, updateTicketSchema } from "@ticket-system/core";
+import { assignTicketSchema, updateTicketSchema, createReplySchema } from "@ticket-system/core";
 import { Role } from "../lib/roles";
 
 export const ticketsRouter = Router();
@@ -146,5 +146,69 @@ ticketsRouter.patch(
     });
 
     res.json({ ticket: updated });
+  })
+);
+
+// GET /api/tickets/:id/replies — list replies for a ticket (any authenticated user)
+ticketsRouter.get(
+  "/:id/replies",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const id = req.params.id as string;
+
+    const ticket = await prisma.ticket.findUnique({ where: { id } });
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found." });
+      return;
+    }
+
+    const replies = await prisma.ticketReply.findMany({
+      where: { ticketId: id },
+      orderBy: { createdAt: "asc" },
+      include: {
+        author: {
+          select: { id: true, name: true, email: true, role: true },
+        },
+      },
+    });
+
+    res.json({ replies });
+  })
+);
+
+// POST /api/tickets/:id/replies — add a reply (any authenticated user)
+ticketsRouter.post(
+  "/:id/replies",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const id = req.params.id as string;
+
+    const result = createReplySchema.safeParse(req.body);
+    if (!result.success) {
+      res.status(400).json({ error: result.error.issues[0]?.message });
+      return;
+    }
+    const { body } = result.data;
+
+    const ticket = await prisma.ticket.findUnique({ where: { id } });
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found." });
+      return;
+    }
+
+    const reply = await prisma.ticketReply.create({
+      data: {
+        ticketId: id,
+        authorId: req.user!.id,
+        body,
+      },
+      include: {
+        author: {
+          select: { id: true, name: true, email: true, role: true },
+        },
+      },
+    });
+
+    res.status(201).json({ reply });
   })
 );

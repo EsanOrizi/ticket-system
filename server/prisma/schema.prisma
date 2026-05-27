@@ -19,6 +19,7 @@ model User {
   sessions      Session[]
   accounts      Account[]
   tickets       Ticket[]
+  ticketReplies TicketReply[]
 }
 
 model Session {
@@ -60,17 +61,29 @@ model Verification {
 }
 
 model Ticket {
-  id             String   @id
+  id             String        @id
   subject        String
   body           String
-  status         String   @default("OPEN")
-  category       String   @default("GENERAL_QUESTION")
+  status         String        @default("OPEN")
+  category       String        @default("GENERAL_QUESTION")
   assignedToId   String?
-  assignedTo     User?    @relation(fields: [assignedToId], references: [id])
+  assignedTo     User?         @relation(fields: [assignedToId], references: [id])
   fromEmail      String?
   fromName       String?
-  source         String   @default("WEB")
-  emailMessageId String?  @unique
+  source         String        @default("WEB")
+  emailMessageId String?       @unique
   createdAt      DateTime
   updatedAt      DateTime
+  replies        TicketReply[]
+}
+
+model TicketReply {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
