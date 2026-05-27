@@ -79,7 +79,8 @@ test.describe("Empty state", () => {
     page,
   }) => {
     // Intercept the tickets API call and return an empty list.
-    await page.route(TICKETS_API_URL, (route) => {
+    // Use a glob so the mock matches regardless of sort query params.
+    await page.route(`${TICKETS_API_URL}**`, (route) => {
       route.fulfill({
         status: 200,
         contentType: "application/json",

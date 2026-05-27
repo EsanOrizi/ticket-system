@@ -1,17 +1,31 @@
 import { Router } from "express";
+import { z } from "zod";
 import { requireAuth } from "../lib/auth-middleware";
 import { prisma } from "../lib/prisma";
 import { asyncHandler } from "../lib/async-handler";
 
 export const ticketsRouter = Router();
 
-// GET /api/tickets — all tickets, newest first (any authenticated user)
+const sortSchema = z.object({
+  sortBy: z
+    .enum(["subject", "status", "createdAt", "fromName", "fromEmail"])
+    .default("createdAt"),
+  sortOrder: z.enum(["asc", "desc"]).default("desc"),
+});
+
+// GET /api/tickets — all tickets, server-sorted (any authenticated user)
 ticketsRouter.get(
   "/",
   requireAuth,
-  asyncHandler(async (_req, res) => {
+  asyncHandler(async (req, res) => {
+    const result = sortSchema.safeParse(req.query);
+    if (!result.success) {
+      res.status(400).json({ error: result.error.issues[0]?.message });
+      return;
+    }
+    const { sortBy, sortOrder } = result.data;
     const tickets = await prisma.ticket.findMany({
-      orderBy: { createdAt: "desc" },
+      orderBy: { [sortBy]: sortOrder },
     });
     res.json({ tickets });
   })

@@ -1,9 +1,34 @@
+import { useState } from "react";
 import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
+import {
+  useReactTable,
+  getCoreRowModel,
+  flexRender,
+  type ColumnDef,
+  type SortingState,
+  type RowData,
+} from "@tanstack/react-table";
+import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+
+// ---------------------------------------------------------------------------
+// Extend ColumnMeta so column definitions can carry testId + className
+// ---------------------------------------------------------------------------
+declare module "@tanstack/react-table" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData extends RowData, TValue> {
+    testId?: string;
+    className?: string;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface Ticket {
   id: string;
@@ -18,13 +43,24 @@ interface Ticket {
   createdAt: string;
 }
 
-async function fetchTickets(): Promise<Ticket[]> {
+// ---------------------------------------------------------------------------
+// Fetcher — passes sort params to the server
+// ---------------------------------------------------------------------------
+
+async function fetchTickets(
+  sortBy: string,
+  sortOrder: "asc" | "desc"
+): Promise<Ticket[]> {
   const { data } = await axios.get<{ tickets: Ticket[] }>(
     "http://localhost:3000/api/tickets",
-    { withCredentials: true }
+    { withCredentials: true, params: { sortBy, sortOrder } }
   );
   return data.tickets;
 }
+
+// ---------------------------------------------------------------------------
+// Helper components
+// ---------------------------------------------------------------------------
 
 function StatusBadge({ status }: { status: string }) {
   const isOpen = status === "OPEN";
@@ -42,6 +78,16 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function SortIcon({ direction }: { direction: "asc" | "desc" | false }) {
+  if (direction === "asc")
+    return <ArrowUp className="ml-1.5 inline-block h-3.5 w-3.5" />;
+  if (direction === "desc")
+    return <ArrowDown className="ml-1.5 inline-block h-3.5 w-3.5" />;
+  return (
+    <ArrowUpDown className="ml-1.5 inline-block h-3.5 w-3.5 opacity-40" />
+  );
+}
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
     year: "numeric",
@@ -50,21 +96,125 @@ function formatDate(iso: string) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Column definitions
+// ---------------------------------------------------------------------------
+
+const columns: ColumnDef<Ticket>[] = [
+  {
+    accessorKey: "subject",
+    meta: { testId: "ticket-subject", className: "px-6 py-3 font-medium text-gray-900" },
+    header: ({ column }) => (
+      <button
+        onClick={column.getToggleSortingHandler()}
+        className="flex cursor-pointer items-center hover:text-gray-700"
+      >
+        Subject
+        <SortIcon direction={column.getIsSorted()} />
+      </button>
+    ),
+    cell: ({ getValue }) => <>{getValue<string>()}</>,
+  },
+  {
+    id: "fromName",
+    accessorKey: "fromName",
+    meta: { testId: "ticket-from", className: "px-6 py-3 text-gray-600" },
+    header: ({ column }) => (
+      <button
+        onClick={column.getToggleSortingHandler()}
+        className="flex cursor-pointer items-center hover:text-gray-700"
+      >
+        From
+        <SortIcon direction={column.getIsSorted()} />
+      </button>
+    ),
+    cell: ({ row }) => {
+      const { fromName, fromEmail } = row.original;
+      if (!fromName && !fromEmail)
+        return <span className="text-gray-400">—</span>;
+      return (
+        <>
+          {fromName && (
+            <span className="block font-medium text-gray-800">{fromName}</span>
+          )}
+          {fromEmail && (
+            <span className="block text-xs text-gray-500">{fromEmail}</span>
+          )}
+        </>
+      );
+    },
+  },
+  {
+    accessorKey: "status",
+    meta: { className: "px-6 py-3" },
+    header: ({ column }) => (
+      <button
+        onClick={column.getToggleSortingHandler()}
+        className="flex cursor-pointer items-center hover:text-gray-700"
+      >
+        Status
+        <SortIcon direction={column.getIsSorted()} />
+      </button>
+    ),
+    cell: ({ getValue }) => <StatusBadge status={getValue<string>()} />,
+  },
+  {
+    accessorKey: "createdAt",
+    sortDescFirst: true,
+    meta: { testId: "ticket-date", className: "px-6 py-3 text-gray-500" },
+    header: ({ column }) => (
+      <button
+        onClick={column.getToggleSortingHandler()}
+        className="flex cursor-pointer items-center hover:text-gray-700"
+      >
+        Date
+        <SortIcon direction={column.getIsSorted()} />
+      </button>
+    ),
+    cell: ({ getValue }) => formatDate(getValue<string>()),
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
 export default function TicketsPage() {
+  // Default: newest tickets first
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "createdAt", desc: true },
+  ]);
+
+  // Derive the server-side params from the TanStack sorting state.
+  // When the user clears all sorting (empty array), fall back to the default.
+  const sortBy = sorting[0]?.id ?? "createdAt";
+  const sortOrder: "asc" | "desc" =
+    sorting.length > 0 ? (sorting[0].desc ? "desc" : "asc") : "desc";
+
   const {
     data: tickets = [],
     isLoading,
     error,
     refetch,
   } = useQuery({
-    queryKey: ["tickets"],
-    queryFn: fetchTickets,
+    queryKey: ["tickets", sortBy, sortOrder],
+    queryFn: () => fetchTickets(sortBy, sortOrder),
   });
 
   const errorMessage = axios.isAxiosError(error)
     ? (error.response?.data as { error?: string })?.error ?? error.message
     : (error as Error | null)?.message ?? null;
 
+  const table = useReactTable({
+    data: tickets,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    manualSorting: true, // sorting is done by the server, not the client
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  // ---- Loading skeleton -------------------------------------------------------
   if (isLoading) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-8">
@@ -110,6 +260,7 @@ export default function TicketsPage() {
     );
   }
 
+  // ---- Error state ------------------------------------------------------------
   if (errorMessage) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-8">
@@ -125,6 +276,7 @@ export default function TicketsPage() {
     );
   }
 
+  // ---- Loaded ----------------------------------------------------------------
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <Card>
@@ -135,7 +287,7 @@ export default function TicketsPage() {
           </span>
         </CardHeader>
         <CardContent className="p-0">
-          {tickets.length === 0 ? (
+          {table.getRowModel().rows.length === 0 ? (
             <p
               data-testid="tickets-empty-state"
               className="px-6 py-8 text-center text-sm text-gray-400"
@@ -146,53 +298,45 @@ export default function TicketsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm" data-testid="tickets-table">
                 <thead>
-                  <tr className="border-t bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
-                    <th className="px-6 py-3">Subject</th>
-                    <th className="px-6 py-3">From</th>
-                    <th className="px-6 py-3">Status</th>
-                    <th className="px-6 py-3">Date</th>
-                  </tr>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <tr
+                      key={headerGroup.id}
+                      className="border-t bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500"
+                    >
+                      {headerGroup.headers.map((header) => (
+                        <th key={header.id} className="px-6 py-3">
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                        </th>
+                      ))}
+                    </tr>
+                  ))}
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {tickets.map((ticket) => (
+                  {table.getRowModel().rows.map((row) => (
                     <tr
-                      key={ticket.id}
+                      key={row.id}
                       data-testid="ticket-row"
                       className="transition-colors hover:bg-gray-50"
                     >
-                      <td
-                        data-testid="ticket-subject"
-                        className="px-6 py-3 font-medium text-gray-900"
-                      >
-                        {ticket.subject}
-                      </td>
-                      <td
-                        data-testid="ticket-from"
-                        className="px-6 py-3 text-gray-600"
-                      >
-                        {ticket.fromName && (
-                          <span className="block font-medium text-gray-800">
-                            {ticket.fromName}
-                          </span>
-                        )}
-                        {ticket.fromEmail && (
-                          <span className="block text-xs text-gray-500">
-                            {ticket.fromEmail}
-                          </span>
-                        )}
-                        {!ticket.fromName && !ticket.fromEmail && (
-                          <span className="text-gray-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-3">
-                        <StatusBadge status={ticket.status} />
-                      </td>
-                      <td
-                        data-testid="ticket-date"
-                        className="px-6 py-3 text-gray-500"
-                      >
-                        {formatDate(ticket.createdAt)}
-                      </td>
+                      {row.getVisibleCells().map((cell) => (
+                        <td
+                          key={cell.id}
+                          data-testid={cell.column.columnDef.meta?.testId}
+                          className={
+                            cell.column.columnDef.meta?.className ?? "px-6 py-3"
+                          }
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
