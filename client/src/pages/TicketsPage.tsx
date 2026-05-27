@@ -9,7 +9,7 @@ import {
   type SortingState,
   type RowData,
 } from "@tanstack/react-table";
-import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -43,19 +43,28 @@ interface Ticket {
   createdAt: string;
 }
 
+interface TicketsResponse {
+  tickets: Ticket[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 // ---------------------------------------------------------------------------
-// Fetcher — passes sort params to the server
+// Fetcher — passes sort + pagination params to the server
 // ---------------------------------------------------------------------------
 
 async function fetchTickets(
   sortBy: string,
-  sortOrder: "asc" | "desc"
-): Promise<Ticket[]> {
-  const { data } = await axios.get<{ tickets: Ticket[] }>(
+  sortOrder: "asc" | "desc",
+  page: number,
+  pageSize: number
+): Promise<TicketsResponse> {
+  const { data } = await axios.get<TicketsResponse>(
     "http://localhost:3000/api/tickets",
-    { withCredentials: true, params: { sortBy, sortOrder } }
+    { withCredentials: true, params: { sortBy, sortOrder, page, pageSize } }
   );
-  return data.tickets;
+  return data;
 }
 
 // ---------------------------------------------------------------------------
@@ -175,6 +184,8 @@ const columns: ColumnDef<Ticket>[] = [
   },
 ];
 
+const PAGE_SIZE = 10;
+
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
@@ -184,6 +195,7 @@ export default function TicketsPage() {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "createdAt", desc: true },
   ]);
+  const [page, setPage] = useState(1);
 
   // Derive the server-side params from the TanStack sorting state.
   // When the user clears all sorting (empty array), fall back to the default.
@@ -191,15 +203,28 @@ export default function TicketsPage() {
   const sortOrder: "asc" | "desc" =
     sorting.length > 0 ? (sorting[0].desc ? "desc" : "asc") : "desc";
 
+  // Reset to page 1 whenever sorting changes
+  function handleSortingChange(updater: SortingState | ((old: SortingState) => SortingState)) {
+    setSorting(updater);
+    setPage(1);
+  }
+
   const {
-    data: tickets = [],
+    data,
     isLoading,
     error,
     refetch,
   } = useQuery({
-    queryKey: ["tickets", sortBy, sortOrder],
-    queryFn: () => fetchTickets(sortBy, sortOrder),
+    queryKey: ["tickets", sortBy, sortOrder, page, PAGE_SIZE],
+    queryFn: () => fetchTickets(sortBy, sortOrder, page, PAGE_SIZE),
   });
+
+  const tickets = data?.tickets ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const firstItem = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const lastItem = Math.min(page * PAGE_SIZE, total);
 
   const errorMessage = axios.isAxiosError(error)
     ? (error.response?.data as { error?: string })?.error ?? error.message
@@ -209,7 +234,7 @@ export default function TicketsPage() {
     data: tickets,
     columns,
     state: { sorting },
-    onSortingChange: setSorting,
+    onSortingChange: handleSortingChange,
     manualSorting: true, // sorting is done by the server, not the client
     getCoreRowModel: getCoreRowModel(),
   });
@@ -283,7 +308,7 @@ export default function TicketsPage() {
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="text-xl font-semibold">Tickets</CardTitle>
           <span data-testid="tickets-count" className="text-sm text-gray-500">
-            {tickets.length} {tickets.length === 1 ? "ticket" : "tickets"}
+            {total} {total === 1 ? "ticket" : "tickets"}
           </span>
         </CardHeader>
         <CardContent className="p-0">
@@ -295,53 +320,96 @@ export default function TicketsPage() {
               No tickets yet.
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm" data-testid="tickets-table">
-                <thead>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <tr
-                      key={headerGroup.id}
-                      className="border-t bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500"
-                    >
-                      {headerGroup.headers.map((header) => (
-                        <th key={header.id} className="px-6 py-3">
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
-                        </th>
-                      ))}
-                    </tr>
-                  ))}
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {table.getRowModel().rows.map((row) => (
-                    <tr
-                      key={row.id}
-                      data-testid="ticket-row"
-                      className="transition-colors hover:bg-gray-50"
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <td
-                          key={cell.id}
-                          data-testid={cell.column.columnDef.meta?.testId}
-                          className={
-                            cell.column.columnDef.meta?.className ?? "px-6 py-3"
-                          }
-                        >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm" data-testid="tickets-table">
+                  <thead>
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <tr
+                        key={headerGroup.id}
+                        className="border-t bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500"
+                      >
+                        {headerGroup.headers.map((header) => (
+                          <th key={header.id} className="px-6 py-3">
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(
+                                  header.column.columnDef.header,
+                                  header.getContext()
+                                )}
+                          </th>
+                        ))}
+                      </tr>
+                    ))}
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {table.getRowModel().rows.map((row) => (
+                      <tr
+                        key={row.id}
+                        data-testid="ticket-row"
+                        className="transition-colors hover:bg-gray-50"
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <td
+                            key={cell.id}
+                            data-testid={cell.column.columnDef.meta?.testId}
+                            className={
+                              cell.column.columnDef.meta?.className ?? "px-6 py-3"
+                            }
+                          >
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination bar */}
+              <div
+                data-testid="pagination"
+                className="flex items-center justify-between border-t px-6 py-3"
+              >
+                <span
+                  data-testid="pagination-info"
+                  className="text-sm text-gray-500"
+                >
+                  Showing {firstItem}–{lastItem} of {total}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    data-testid="pagination-prev"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => p - 1)}
+                    disabled={page <= 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Prev
+                  </Button>
+                  <span
+                    data-testid="pagination-page"
+                    className="min-w-[6rem] text-center text-sm text-gray-600"
+                  >
+                    Page {page} of {totalPages}
+                  </span>
+                  <Button
+                    data-testid="pagination-next"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={page >= totalPages}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
