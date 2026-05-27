@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireAuth, requireAdmin } from "../lib/auth-middleware";
 import { prisma } from "../lib/prisma";
 import { asyncHandler } from "../lib/async-handler";
-import { assignTicketSchema } from "@ticket-system/core";
+import { assignTicketSchema, updateTicketSchema } from "@ticket-system/core";
 import { Role } from "../lib/roles";
 
 export const ticketsRouter = Router();
@@ -62,6 +62,40 @@ ticketsRouter.get(
       return;
     }
     res.json({ ticket });
+  })
+);
+
+// PATCH /api/tickets/:id — update status and/or category (any authenticated user)
+ticketsRouter.patch(
+  "/:id",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const id = req.params.id as string;
+
+    const result = updateTicketSchema.safeParse(req.body);
+    if (!result.success) {
+      res.status(400).json({ error: result.error.issues[0]?.message });
+      return;
+    }
+    const { status, category } = result.data;
+
+    const ticket = await prisma.ticket.findUnique({ where: { id } });
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found." });
+      return;
+    }
+
+    const updated = await prisma.ticket.update({
+      where: { id },
+      data: { ...(status !== undefined && { status }), ...(category !== undefined && { category }) },
+      include: {
+        assignedTo: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+    });
+
+    res.json({ ticket: updated });
   })
 );
 

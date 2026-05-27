@@ -1,5 +1,18 @@
 import { z } from "zod";
 
+export const TICKET_STATUSES = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"] as const;
+export type TicketStatus = (typeof TICKET_STATUSES)[number];
+
+export const TICKET_CATEGORIES = [
+  "GENERAL_QUESTION",
+  "BILLING",
+  "TECHNICAL",
+  "BUG_REPORT",
+  "FEATURE_REQUEST",
+  "ACCOUNT",
+] as const;
+export type TicketCategory = (typeof TICKET_CATEGORIES)[number];
+
 export const ticketSchema = z.object({
   id: z.string(),
   subject: z.string(),
@@ -22,3 +35,10 @@ export const assignTicketSchema = z.object({
 });
 
 export type AssignTicketInput = z.infer<typeof assignTicketSchema>;
+
+export const updateTicketSchema = z.object({
+  status: z.enum(TICKET_STATUSES).optional(),
+  category: z.enum(TICKET_CATEGORIES).optional(),
+});
+
+export type UpdateTicketInput = z.infer<typeof updateTicketSchema>;

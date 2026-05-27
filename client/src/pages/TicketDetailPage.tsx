@@ -4,6 +4,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import {
+  TICKET_STATUSES,
+  TICKET_CATEGORIES,
+  type TicketStatus,
+  type TicketCategory,
+} from "@ticket-system/core";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -41,7 +47,7 @@ interface Agent {
 }
 
 // ---------------------------------------------------------------------------
-// Fetchers
+// Fetchers / mutators
 // ---------------------------------------------------------------------------
 
 async function fetchTicket(id: string): Promise<Ticket> {
@@ -60,6 +66,18 @@ async function fetchAgents(): Promise<Agent[]> {
   return data.users.filter((u) => u.role === "AGENT");
 }
 
+async function patchTicket(
+  id: string,
+  body: { status?: string; category?: string }
+): Promise<Ticket> {
+  const { data } = await axios.patch<{ ticket: Ticket }>(
+    `http://localhost:3000/api/tickets/${id}`,
+    body,
+    { withCredentials: true }
+  );
+  return data.ticket;
+}
+
 async function assignTicket(id: string, assignedToId: string | null): Promise<Ticket> {
   const { data } = await axios.patch<{ ticket: Ticket }>(
     `http://localhost:3000/api/tickets/${id}/assign`,
@@ -70,22 +88,24 @@ async function assignTicket(id: string, assignedToId: string | null): Promise<Ti
 }
 
 // ---------------------------------------------------------------------------
-// Helper components
+// Helpers
 // ---------------------------------------------------------------------------
 
-function StatusBadge({ status }: { status: string }) {
-  const isOpen = status === "OPEN";
-  return (
-    <span
-      className={
-        isOpen
-          ? "inline-flex items-center rounded-md px-2.5 py-0.5 text-sm font-medium ring-1 ring-inset bg-emerald-50 text-emerald-700 ring-emerald-700/10"
-          : "inline-flex items-center rounded-md px-2.5 py-0.5 text-sm font-medium ring-1 ring-inset bg-gray-50 text-gray-600 ring-gray-500/10"
-      }
-    >
-      {status}
-    </span>
-  );
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function toLabel(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -97,14 +117,90 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
   );
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+// ---------------------------------------------------------------------------
+// Inline field control (reusable for status + category)
+// ---------------------------------------------------------------------------
+
+function InlineSelectControl<T extends string>({
+  testId,
+  value,
+  options,
+  badgeClass,
+  onSave,
+}: {
+  testId: string;
+  value: T;
+  options: readonly T[];
+  badgeClass?: (v: T) => string;
+  onSave: (next: T) => Promise<void>;
+}) {
+  const [selected, setSelected] = useState<T>(value);
+  const [isPending, setIsPending] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelected(value);
+    setSaved(false);
+    setError(null);
+  }, [value]);
+
+  const isDirty = selected !== value;
+
+  async function handleSave() {
+    setIsPending(true);
+    setError(null);
+    setSaved(false);
+    try {
+      await onSave(selected);
+      setSaved(true);
+    } catch (err) {
+      const msg = axios.isAxiosError(err)
+        ? (err.response?.data as { error?: string })?.error ?? err.message
+        : (err as Error).message;
+      setError(msg);
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          data-testid={testId}
+          value={selected}
+          onChange={(e) => {
+            setSelected(e.target.value as T);
+            setSaved(false);
+            setError(null);
+          }}
+          className={`rounded-md border px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+            badgeClass ? badgeClass(selected) : "border-gray-300 bg-white text-gray-900"
+          }`}
+        >
+          {options.map((opt) => (
+            <option key={opt} value={opt}>
+              {toLabel(opt)}
+            </option>
+          ))}
+        </select>
+
+        <Button
+          size="sm"
+          onClick={handleSave}
+          disabled={!isDirty || isPending}
+        >
+          {isPending ? "Saving…" : "Save"}
+        </Button>
+
+        {saved && !isDirty && (
+          <span className="text-sm text-emerald-600">Saved</span>
+        )}
+      </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -123,7 +219,6 @@ function AssignControl({
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string>(currentAssignedToId ?? "");
 
-  // Keep local state in sync if the ticket data changes (e.g. after mutation)
   useEffect(() => {
     setSelectedId(currentAssignedToId ?? "");
   }, [currentAssignedToId]);
@@ -138,17 +233,13 @@ function AssignControl({
 
   const isDirty = selectedId !== (currentAssignedToId ?? "");
 
-  function handleSave() {
-    mutation.mutate(selectedId === "" ? null : selectedId);
-  }
-
   const saveError = axios.isAxiosError(mutation.error)
     ? (mutation.error.response?.data as { error?: string })?.error ??
       mutation.error.message
     : (mutation.error as Error | null)?.message ?? null;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5">
       <div className="flex flex-wrap items-center gap-2">
         <select
           data-testid="assign-agent-select"
@@ -170,7 +261,7 @@ function AssignControl({
         <Button
           data-testid="assign-save-button"
           size="sm"
-          onClick={handleSave}
+          onClick={() => mutation.mutate(selectedId === "" ? null : selectedId)}
           disabled={!isDirty || mutation.isPending}
         >
           {mutation.isPending ? "Saving…" : "Save"}
@@ -180,11 +271,37 @@ function AssignControl({
           <span className="text-sm text-emerald-600">Saved</span>
         )}
       </div>
-
-      {saveError && (
-        <p className="text-sm text-red-600">{saveError}</p>
-      )}
+      {saveError && <p className="text-sm text-red-600">{saveError}</p>}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Status badge (read-only display)
+// ---------------------------------------------------------------------------
+
+function statusBadgeClass(status: string) {
+  switch (status) {
+    case "OPEN":
+      return "bg-emerald-50 text-emerald-700 ring-emerald-700/10";
+    case "IN_PROGRESS":
+      return "bg-blue-50 text-blue-700 ring-blue-700/10";
+    case "RESOLVED":
+      return "bg-purple-50 text-purple-700 ring-purple-700/10";
+    case "CLOSED":
+      return "bg-gray-50 text-gray-600 ring-gray-500/10";
+    default:
+      return "bg-gray-50 text-gray-600 ring-gray-500/10";
+  }
+}
+
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-sm font-medium ring-1 ring-inset ${statusBadgeClass(status)}`}
+    >
+      {toLabel(status)}
+    </span>
   );
 }
 
@@ -196,6 +313,7 @@ export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: session } = authClient.useSession();
   const isAdmin = (session?.user as { role?: string })?.role === "ADMIN";
+  const queryClient = useQueryClient();
 
   const {
     data: ticket,
@@ -272,6 +390,16 @@ export default function TicketDetailPage() {
 
   if (!ticket) return null;
 
+  async function handleStatusSave(status: TicketStatus) {
+    await patchTicket(id!, { status });
+    await queryClient.invalidateQueries({ queryKey: ["ticket", id] });
+  }
+
+  async function handleCategorySave(category: TicketCategory) {
+    await patchTicket(id!, { category });
+    await queryClient.invalidateQueries({ queryKey: ["ticket", id] });
+  }
+
   // ---- Loaded ----------------------------------------------------------------
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
@@ -292,6 +420,7 @@ export default function TicketDetailPage() {
             >
               {ticket.subject}
             </CardTitle>
+            {/* Always show the read-only badge alongside the editable control */}
             <StatusBadge status={ticket.status} />
           </div>
         </CardHeader>
@@ -314,6 +443,24 @@ export default function TicketDetailPage() {
               </DetailRow>
             )}
 
+            <DetailRow label="Status">
+              <InlineSelectControl<TicketStatus>
+                testId="ticket-status-select"
+                value={ticket.status as TicketStatus}
+                options={TICKET_STATUSES}
+                onSave={handleStatusSave}
+              />
+            </DetailRow>
+
+            <DetailRow label="Category">
+              <InlineSelectControl<TicketCategory>
+                testId="ticket-category-select"
+                value={ticket.category as TicketCategory}
+                options={TICKET_CATEGORIES}
+                onSave={handleCategorySave}
+              />
+            </DetailRow>
+
             <DetailRow label="Assigned to">
               {isAdmin ? (
                 <AssignControl
@@ -328,9 +475,6 @@ export default function TicketDetailPage() {
               )}
             </DetailRow>
 
-            <DetailRow label="Category">
-              {ticket.category || <span className="text-gray-400">—</span>}
-            </DetailRow>
             <DetailRow label="Source">
               <span className="capitalize lowercase">{ticket.source}</span>
             </DetailRow>
