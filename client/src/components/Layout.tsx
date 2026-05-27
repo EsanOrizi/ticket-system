@@ -18,6 +18,9 @@ export default function Layout() {
             Ticket System
           </Link>
           <div className="flex items-center gap-4">
+            <Link to="/tickets" className="text-sm font-medium text-gray-700 hover:text-gray-900">
+              Tickets
+            </Link>
             {(session?.user as { role?: string })?.role === "ADMIN" && (
               <Link to="/users" className="text-sm font-medium text-gray-700 hover:text-gray-900">
                 Users

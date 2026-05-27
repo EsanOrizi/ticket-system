@@ -56,6 +56,13 @@ export default async function globalSetup() {
     stdio: "inherit",
   });
 
+  console.log("Seeding test tickets in test database...");
+  execSync("bun run prisma/seed-tickets.ts", {
+    cwd: serverDir,
+    env,
+    stdio: "inherit",
+  });
+
   // Ensure the .auth directory exists so tests can write storageState files.
   if (!fs.existsSync(authDir)) {
     fs.mkdirSync(authDir, { recursive: true });

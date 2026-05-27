@@ -61,8 +61,32 @@ metadata:
 - Confirm: `dialog.getByRole("button", { name: "Delete" })` / `{ name: "Deleting..." }` pending
 - Cancel: `dialog.getByRole("button", { name: "Cancel" })`
 
+**TicketsPage (`client/src/pages/TicketsPage.tsx`)**
+- Card title: `page.locator('[data-slot="card-title"]', { hasText: "Tickets" })` — CardTitle renders as `<div data-slot="card-title">`, same as UsersPage
+- Tickets nav link: `getByRole("link", { name: "Tickets" })` — shown unconditionally for all authenticated users in Layout
+- Table: `getByTestId("tickets-table")` — present when tickets.length > 0
+- Empty state: `getByTestId("tickets-empty-state")` — `<p>` shown when tickets.length === 0; text is "No tickets yet."
+- Ticket rows: `getByTestId("ticket-row")` — one per ticket
+- Subject cell: row `getByTestId("ticket-subject")`
+- From cell: row `getByTestId("ticket-from")` — contains `fromName` (block span) and `fromEmail` (xs span); shows "—" when both are null
+- Status badge: row `getByTestId("ticket-status-badge")` — `<span>` inside StatusBadge; text is the status string (e.g. "OPEN", "CLOSED")
+- Date cell: row `getByTestId("ticket-date")` — formatted by `toLocaleDateString("en-US", { year:"numeric", month:"short", day:"numeric" })` e.g. "May 27, 2025"
+- Count span: `getByTestId("tickets-count")` — "N ticket(s)" in card header
+
+**Column headers (non-loading table):** `getByRole("columnheader", { name: "Subject" | "From" | "Status" | "Date" })`
+
+**Seeded test tickets (from server/prisma/seed-tickets.ts)**
+- "Cannot log in to my account" — OPEN, Alice Smith / alice@example.com, source WEB
+- "Billing invoice missing" — OPEN, Bob Jones / bob@example.com, source EMAIL
+- "Feature request: dark mode" — CLOSED, no from-name/email, source WEB
+
 **data-testid attributes added to source files**
 - `client/src/pages/UsersPage.tsx` — `data-testid="user-name-cell"` on `<span>` in name column
 - `client/src/pages/UsersPage.tsx` — `data-testid="user-role-badge"` on `<span>` in RoleBadge component
+- `client/src/pages/TicketsPage.tsx` — `data-testid="tickets-empty-state"` on empty-state `<p>`
+- `client/src/pages/TicketsPage.tsx` — `data-testid="tickets-table"` on `<table>`
+- `client/src/pages/TicketsPage.tsx` — `data-testid="ticket-row"` on each `<tr>`
+- `client/src/pages/TicketsPage.tsx` — `data-testid="ticket-subject"` / `ticket-from` / `ticket-status-badge` / `ticket-date` on respective cells
+- `client/src/pages/TicketsPage.tsx` — `data-testid="tickets-count"` on count `<span>` in card header
 
 **Why:** CardTitle and RoleBadge both use `font-medium` class — `span.font-medium` was too broad and matched both. Tailwind v4 CSS class names appear correctly in the DOM HTML but CSS class selectors `.text-gray-900` returned zero elements (likely Tailwind v4 generates different class names or utility classes are not present as-is at runtime). `data-testid` attributes are the most reliable solution for these sub-element selectors. The `getByText` filter is case-insensitive for strings — use regex (`/^AGENT$/`) or `data-testid` when exact casing matters.

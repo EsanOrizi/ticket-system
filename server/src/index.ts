@@ -5,6 +5,8 @@ import rateLimit from "express-rate-limit";
 import { toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth";
 import { usersRouter } from "./routes/users";
+import { ticketsRouter } from "./routes/tickets";
+import { startEmailPoller } from "./lib/email-poller";
 
 const required = ["BETTER_AUTH_SECRET", "DATABASE_URL", "CLIENT_ORIGIN"];
 for (const key of required) {
@@ -41,6 +43,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/users", usersRouter);
+app.use("/api/tickets", ticketsRouter);
 
 // Global error handler — catches anything forwarded via next(err) or thrown
 // inside an asyncHandler-wrapped route.
@@ -52,4 +55,5 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  startEmailPoller(Number(process.env.POLL_INTERVAL_MS) || 60_000);
 });

@@ -60,13 +60,17 @@ model Verification {
 }
 
 model Ticket {
-  id           String  @id
-  subject      String
-  body         String
-  status       String  @default("OPEN")
-  category     String  @default("GENERAL_QUESTION")
-  assignedToId String?
-  assignedTo   User?   @relation(fields: [assignedToId], references: [id])
-  createdAt    DateTime
-  updatedAt    DateTime
+  id             String   @id
+  subject        String
+  body           String
+  status         String   @default("OPEN")
+  category       String   @default("GENERAL_QUESTION")
+  assignedToId   String?
+  assignedTo     User?    @relation(fields: [assignedToId], references: [id])
+  fromEmail      String?
+  fromName       String?
+  source         String   @default("WEB")
+  emailMessageId String?  @unique
+  createdAt      DateTime
+  updatedAt      DateTime
 }

@@ -29,3 +29,5 @@ Playwright 1.60 is configured at `playwright.config.ts` (monorepo root). Tests l
 **Why:** Global setup runs before webServers start, so it cannot call the running server. Users must be seeded via direct Prisma + betterAuth API calls, not via HTTP.
 
 **How to apply:** Any new test user roles need a new seed script following the `seed-agent.ts` pattern, added to `global-setup.ts`, and documented in `server/package.json` as a script.
+
+**Ticket seed:** `server/prisma/seed-tickets.ts` — creates 3 test tickets via direct Prisma (no betterAuth needed). Idempotent: checks for existing subject before creating. Runs after user seeds in `global-setup.ts`. Ticket model requires `createdAt` and `updatedAt` to be supplied explicitly (no `@default` in schema).
