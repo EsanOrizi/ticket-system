@@ -10,6 +10,7 @@ import {
   type RowData,
 } from "@tanstack/react-table";
 import { ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -122,7 +123,14 @@ const columns: ColumnDef<Ticket>[] = [
         <SortIcon direction={column.getIsSorted()} />
       </button>
     ),
-    cell: ({ getValue }) => <>{getValue<string>()}</>,
+    cell: ({ getValue, row }) => (
+      <Link
+        to={`/tickets/${row.original.id}`}
+        className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+      >
+        {getValue<string>()}
+      </Link>
+    ),
   },
   {
     id: "fromName",
