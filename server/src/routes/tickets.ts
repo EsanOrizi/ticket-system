@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { z } from "zod";
-import { requireAuth } from "../lib/auth-middleware";
+import { requireAuth, requireAdmin } from "../lib/auth-middleware";
 import { prisma } from "../lib/prisma";
 import { asyncHandler } from "../lib/async-handler";
+import { assignTicketSchema } from "@ticket-system/core";
+import { Role } from "../lib/roles";
 
 export const ticketsRouter = Router();
 
@@ -49,11 +51,66 @@ ticketsRouter.get(
     const id = req.params.id as string;
     const ticket = await prisma.ticket.findUnique({
       where: { id },
+      include: {
+        assignedTo: {
+          select: { id: true, name: true, email: true },
+        },
+      },
     });
     if (!ticket) {
       res.status(404).json({ error: "Ticket not found." });
       return;
     }
     res.json({ ticket });
+  })
+);
+
+// PATCH /api/tickets/:id/assign — assign or unassign a ticket (admin only)
+ticketsRouter.patch(
+  "/:id/assign",
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const id = req.params.id as string;
+
+    const result = assignTicketSchema.safeParse(req.body);
+    if (!result.success) {
+      res.status(400).json({ error: result.error.issues[0]?.message });
+      return;
+    }
+    const { assignedToId } = result.data;
+
+    const ticket = await prisma.ticket.findUnique({ where: { id } });
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found." });
+      return;
+    }
+
+    if (assignedToId !== null) {
+      const agent = await prisma.user.findUnique({
+        where: { id: assignedToId },
+        select: { id: true, role: true, deletedAt: true },
+      });
+      if (!agent || agent.deletedAt !== null) {
+        res.status(404).json({ error: "Agent not found." });
+        return;
+      }
+      if (agent.role !== Role.AGENT) {
+        res.status(400).json({ error: "Tickets can only be assigned to agents." });
+        return;
+      }
+    }
+
+    const updated = await prisma.ticket.update({
+      where: { id },
+      data: { assignedToId },
+      include: {
+        assignedTo: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+    });
+
+    res.json({ ticket: updated });
   })
 );

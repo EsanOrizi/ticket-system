@@ -1,7 +1,9 @@
+import { useState, useEffect } from "react";
 import axios from "axios";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { authClient } from "@/lib/auth-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -11,6 +13,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 // Types
 // ---------------------------------------------------------------------------
 
+interface AssignedUser {
+  id: string;
+  name: string;
+  email: string;
+}
+
 interface Ticket {
   id: string;
   subject: string;
@@ -18,19 +26,44 @@ interface Ticket {
   status: string;
   category: string;
   assignedToId: string | null;
+  assignedTo: AssignedUser | null;
   fromEmail: string | null;
   fromName: string | null;
   source: string;
   createdAt: string;
 }
 
+interface Agent {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
 // ---------------------------------------------------------------------------
-// Fetcher
+// Fetchers
 // ---------------------------------------------------------------------------
 
 async function fetchTicket(id: string): Promise<Ticket> {
   const { data } = await axios.get<{ ticket: Ticket }>(
     `http://localhost:3000/api/tickets/${id}`,
+    { withCredentials: true }
+  );
+  return data.ticket;
+}
+
+async function fetchAgents(): Promise<Agent[]> {
+  const { data } = await axios.get<{ users: Agent[] }>(
+    "http://localhost:3000/api/users",
+    { withCredentials: true }
+  );
+  return data.users.filter((u) => u.role === "AGENT");
+}
+
+async function assignTicket(id: string, assignedToId: string | null): Promise<Ticket> {
+  const { data } = await axios.patch<{ ticket: Ticket }>(
+    `http://localhost:3000/api/tickets/${id}/assign`,
+    { assignedToId },
     { withCredentials: true }
   );
   return data.ticket;
@@ -75,16 +108,110 @@ function formatDate(iso: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Assign control (admin only)
+// ---------------------------------------------------------------------------
+
+function AssignControl({
+  ticketId,
+  currentAssignedToId,
+  agents,
+}: {
+  ticketId: string;
+  currentAssignedToId: string | null;
+  agents: Agent[];
+}) {
+  const queryClient = useQueryClient();
+  const [selectedId, setSelectedId] = useState<string>(currentAssignedToId ?? "");
+
+  // Keep local state in sync if the ticket data changes (e.g. after mutation)
+  useEffect(() => {
+    setSelectedId(currentAssignedToId ?? "");
+  }, [currentAssignedToId]);
+
+  const mutation = useMutation({
+    mutationFn: (assignedToId: string | null) =>
+      assignTicket(ticketId, assignedToId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["ticket", ticketId] });
+    },
+  });
+
+  const isDirty = selectedId !== (currentAssignedToId ?? "");
+
+  function handleSave() {
+    mutation.mutate(selectedId === "" ? null : selectedId);
+  }
+
+  const saveError = axios.isAxiosError(mutation.error)
+    ? (mutation.error.response?.data as { error?: string })?.error ??
+      mutation.error.message
+    : (mutation.error as Error | null)?.message ?? null;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          data-testid="assign-agent-select"
+          value={selectedId}
+          onChange={(e) => {
+            setSelectedId(e.target.value);
+            mutation.reset();
+          }}
+          className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        >
+          <option value="">— Unassigned —</option>
+          {agents.map((agent) => (
+            <option key={agent.id} value={agent.id}>
+              {agent.name}
+            </option>
+          ))}
+        </select>
+
+        <Button
+          data-testid="assign-save-button"
+          size="sm"
+          onClick={handleSave}
+          disabled={!isDirty || mutation.isPending}
+        >
+          {mutation.isPending ? "Saving…" : "Save"}
+        </Button>
+
+        {mutation.isSuccess && !isDirty && (
+          <span className="text-sm text-emerald-600">Saved</span>
+        )}
+      </div>
+
+      {saveError && (
+        <p className="text-sm text-red-600">{saveError}</p>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { data: session } = authClient.useSession();
+  const isAdmin = (session?.user as { role?: string })?.role === "ADMIN";
 
-  const { data: ticket, isLoading, error, refetch } = useQuery({
+  const {
+    data: ticket,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["ticket", id],
     queryFn: () => fetchTicket(id!),
     enabled: !!id,
+  });
+
+  const { data: agents = [] } = useQuery({
+    queryKey: ["agents"],
+    queryFn: fetchAgents,
+    enabled: isAdmin,
   });
 
   const errorMessage = axios.isAxiosError(error)
@@ -103,7 +230,7 @@ export default function TicketDetailPage() {
           </CardHeader>
           <CardContent className="pt-6">
             <dl className="space-y-4">
-              {Array.from({ length: 4 }).map((_, i) => (
+              {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="flex gap-4">
                   <Skeleton className="h-4 w-28" />
                   <Skeleton className="h-4 w-48" />
@@ -178,10 +305,29 @@ export default function TicketDetailPage() {
                 )}
                 {ticket.fromName && ticket.fromEmail && " "}
                 {ticket.fromEmail && (
-                  <span className="text-gray-500">{"<"}{ticket.fromEmail}{">"}</span>
+                  <span className="text-gray-500">
+                    {"<"}
+                    {ticket.fromEmail}
+                    {">"}
+                  </span>
                 )}
               </DetailRow>
             )}
+
+            <DetailRow label="Assigned to">
+              {isAdmin ? (
+                <AssignControl
+                  ticketId={ticket.id}
+                  currentAssignedToId={ticket.assignedToId}
+                  agents={agents}
+                />
+              ) : ticket.assignedTo ? (
+                <span data-testid="ticket-assignee">{ticket.assignedTo.name}</span>
+              ) : (
+                <span className="text-gray-400">Unassigned</span>
+              )}
+            </DetailRow>
+
             <DetailRow label="Category">
               {ticket.category || <span className="text-gray-400">—</span>}
             </DetailRow>
