@@ -113,6 +113,8 @@ usersRouter.delete("/:id", requireAuth, requireAdmin, asyncHandler(async (req, r
   await prisma.$transaction([
     // Invalidate all active sessions so the user is logged out immediately
     prisma.session.deleteMany({ where: { userId: id } }),
+    // Unassign all tickets that were assigned to this user
+    prisma.ticket.updateMany({ where: { assignedToId: id }, data: { assignedToId: null } }),
     // Soft-delete the user
     prisma.user.update({ where: { id }, data: { deletedAt: new Date() } }),
   ]);
